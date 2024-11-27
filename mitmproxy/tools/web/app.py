@@ -38,6 +38,8 @@ from mitmproxy.udp import UDPMessage
 from mitmproxy.utils.emoji import emoji
 from mitmproxy.utils.strutils import always_str
 from mitmproxy.websocket import WebSocketMessage
+from mitmproxy.utils.vegetax.utils import GetCurrDir
+from mitmproxy.utils.vegetax.saveFlowToDb import FlowDBWriter
 
 TRANSPARENT_PNG = (
     b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08"
@@ -331,8 +333,8 @@ class Flows(RequestHandler):
 
 class DumpFlows(RequestHandler):
     def get(self) -> None:
-        self.set_header("Content-Disposition", "attachment; filename=flows")
-        self.set_header("Content-Type", "application/octet-stream")
+        # self.set_header("Content-Disposition", "attachment; filename=flows")
+        # self.set_header("Content-Type", "application/octet-stream")
 
         match: Callable[[mitmproxy.flow.Flow], bool]
         try:
@@ -347,12 +349,33 @@ class DumpFlows(RequestHandler):
             def match(_) -> bool:
                 return True
 
+        # with BytesIO() as bio:
+        #     fw = io.FlowWriter(bio)
+        #     for f in self.view:
+        #         if match(f):
+        #             fw.add(f)
+        #     self.write(bio.getvalue())
+        #VegetaX------------------------------------------------
         with BytesIO() as bio:
-            fw = io.FlowWriter(bio)
-            for f in self.view:
-                if match(f):
-                    fw.add(f)
-            self.write(bio.getvalue())
+            dictResData={"code":0}
+            try:
+                self.set_status(200)
+                self.set_header("Content-Type", "application/json")
+                fdw = FlowDBWriter(os.path.join(GetCurrDir(True), "flow.db"))
+                fw = io.FlowWriter(bio)
+                for f in self.view:
+                    if match(f):
+                        fw.add(f)
+                        fdw.add_flow(f)
+                fdw.closeCon()
+            except Exception as e:
+                logging.error(f"Error while dumping flows: {e}")
+                dictResData["info"]="Error while dumping flows"
+                self.write(dictResData)
+            else:
+                dictResData["info"]="Flows dumped successfully"
+                self.write(dictResData)
+         #VegetaX------------------------------------------------
 
     async def post(self):
         self.view.clear()

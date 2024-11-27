@@ -32,3 +32,17 @@ sslkeylogfile.log
 coverage.xml
 web/coverage/
 .mypy_cache/
+docs/
+examples/
+Include/
+Lib/
+release/
+Scripts/
+test/
+
+CHANGELOG.md
+CONTRIBUTING.md
+LICENSE
+SECURITY.md
+
+
